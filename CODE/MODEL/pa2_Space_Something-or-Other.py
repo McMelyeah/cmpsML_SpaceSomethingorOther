@@ -124,7 +124,7 @@ def main():
 
     plt.subplot(3, 1, 1)
     plt.plot(m1tStamp, m1Stream, label='Original')
-    plt.plot(m1tStamp, m1Stream_notched, label='Filtered')
+    plt.plot(m1tStamp, m1Stream_notched, label='Filtered') #this should be m1Stream_bandpass, but I was testing each filter
     plt.title(m1Label)
     plt.xlabel('Time (s)')
     plt.ylabel('Amplitude')
@@ -132,7 +132,7 @@ def main():
 
     plt.subplot(3, 1, 2)
     plt.plot(p7tStamp, p7Stream, label='Original')
-    plt.plot(p7tStamp, p7Stream_impeded, label='Filtered')
+    plt.plot(p7tStamp, p7Stream_impeded, label='Filtered') #same with this one
     plt.title(p7Label)
     plt.xlabel('Time (s)')
     plt.ylabel('Amplitude')
