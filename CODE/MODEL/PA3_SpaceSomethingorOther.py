@@ -25,20 +25,19 @@ from copy import deepcopy as dpcpy
 from matplotlib import pyplot as plt
 import scipy.signal as signal
 import numpy as np
+import mne
 import pandas as pd
 import seaborn as sns
 import pickle as pckl
 from scipy.stats import kurtosis, skew
+import time
 #
 #%% USER INTERFACE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 chLabel = input("Enter a channel label(ex, M1):").upper()
-l = input("Enter number of windows per stream(ex, 100):")
 #
 #%% CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #%% CONFIGURATION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #%% INITIALIZATIONS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-windowStats = pd.DataFrame(columns=['sb', 'se', 'streamID', 'windowID', 'mean', 'std', 'kur', 'skew'])
-features = pd.DataFrame(columns=['sb', 'se', 'streamID', 'f0', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'classLabel'])
 #%% DECLARATIONS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Global declarations Start Here
 #Class definitions Start Here
@@ -76,45 +75,73 @@ def applyFilters(stream, sampleFreq):
     b_bandpass, a_bandpass = signal.butter(N=4, Wn=[bandpass[0] / (sampleFreq/2), bandpass[1] / (sampleFreq/2)], btype='bandpass')
     stream = signal.filtfilt(b_bandpass, a_bandpass, stream)
 
+    #Apply rereferencing
+    stream -= np.mean(stream)
+
     return stream
 
-def getWindowStats(stream, stream_id, window_size=1000, overlap=0.5):
-    print("Length of stream:", len(stream))
-    print("Stream:", stream[:10])
-    features = []
+def getFeatures(stream, streamID, sb, se, window_size=100, overlap=0.25):
     num_samples = len(stream)
     window_size = min(window_size, num_samples)
     step_size = int(window_size * (1 - overlap))
-    if num_samples < window_size:
-        return pd.DataFrame()
-    for start in range(0, num_samples - window_size +1, step_size):
+    
+    #Generating window stats
+    windowStats = []
+    for start in range(0, num_samples, step_size):
         end = start + window_size
         window = stream[start:end]
-        mean = np.mean(window)
-        std = np.std(window)
-        kur = kurtosis(window)
-        skewedness = skew(window)
-        features.append({
-            'sb': start,
-            'se': end,
-            'streamID': stream_id,
-            'windowID': len(features) +1,
-            'mean': mean,
-            'std': std,
-            'kur': kur,
-            'skew': skewedness
+        windowStats.append({
+            'sb':       sb,
+            'se':       se,
+            'streamID': streamID,
+            'windowID': len(windowStats),
+            'mean':     np.mean(window),
+            'std':      np.std(window),
+            'kur':      kurtosis(window),
+            'skew':     skew(window)
         })
-    features_df = pd.DataFrame(features)
-    return features_df
+    windowStats = pd.DataFrame(windowStats)
     
+    #Generating features from window stats
+    newFeatures = []
+    newFeatures.append({
+        'sb':       sb,
+        'se':       se,
+        'streamID': streamID,
+        'f0':       np.mean(windowStats['mean']),
+        'f1':       np.std(windowStats['mean']),
+        'f2':       np.mean(windowStats['std']),
+        'f3':       np.std(windowStats['std']),
+        'f4':       np.mean(windowStats['kur']),
+        'f5':       np.std(windowStats['kur']),
+        'f6':       np.mean(windowStats['skew']),
+        'f7':       np.std(windowStats['skew']),
+        'class':    0
+    })
+    newFeatures = pd.DataFrame(newFeatures)
+    return newFeatures
     
-
+def visualize(features, chLabel):
+    plt.figure(figsize=(12,12))
+    plt.suptitle(chLabel + " Features\n", fontsize=18)
+    for i, f1, f2 in zip(range(1,5), ['f0', 'f2', 'f4', 'f6'], ['f1', 'f3', 'f5', 'f7']):
+        plt.subplot(2, 2, i)
+        plt.scatter(features[features['class'] == 0][f1], features[features['class'] == 0][f2], c='g', label='sb1(class 0)', alpha=0.75)
+        plt.scatter(features[features['class'] == 1][f1], features[features['class'] == 1][f2], c='b', label='sb2(class 1)', alpha=0.75)
+        plt.title(f1 + ' vs ' + f2, fontsize=16, loc='left')
+        plt.xlabel(f1, fontsize=15)
+        plt.ylabel(f2, fontsize=15)
+        plt.legend()
+    plt.tight_layout()
+    plt.show()
 #
 #%% MAIN CODE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Main code start here
 def main():
+    features = pd.DataFrame(columns=['sb', 'se', 'streamID', 'f0', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'class'])
     chIndex = getIndex(chLabel)
     
+    streamID = 0
     for sb in ['sb1', 'sb2']:
         for se in ['se1', 'se2']:
             pathSoIRoot = 'INPUT\\DataSmall\\' + sb + '\\' + se
@@ -126,22 +153,24 @@ def main():
                 with open(f'{pathSoi}{soi_file}', 'rb') as fp:
                     soi = pckl.load(fp)
                 
-                #Do stuff with stream
+                #Apply filters
                 filteredStream = applyFilters(soi['series'][chIndex], soi['info']['eeg_info']['effective_srate'])
-                filteredStream -= np.mean(filteredStream)
-                window_stats = getWindowStats(filteredStream, soi_file)
+                #Get features
+                newFeatures = getFeatures(filteredStream, streamID, sb, se)
+                #Add features to DF
+                features = pd.concat([features, newFeatures], ignore_index=True)
                 
-                print(window_stats.head())
-                
-                plt.figure(figsize=(8,6))
-                plt.scatter(window_stats['mean'], window_stats['std'], alpha=0.5)
-                plt.xlabel('Mean')
-                plt.ylabel('Standard Deviation')
-                plt.title('Scatterplot of Mean vs. Standard Deviation')
-                plt.grid(True)
-                plt.show()
-
-
+                streamID += 1
+    features.loc[features['sb'] == 'sb2', 'class'] = 1
+    
+    #Visualize features
+    visualize(features, chLabel)
+    #Split train/val and test data
+    trainVal = features.loc[features['se'] == 'se1']
+    test = features.loc[features['se'] == 'se2']
+    #Output csv files
+    trainVal.to_csv('OUTPUT\\TrainValidateData.csv')
+    test.to_csv('OUTPUT\\TestData.csv')
 #             
 #%% SELF-RUN ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Main Self-run block

@@ -16,13 +16,14 @@ Notes:
 #%% IMPORTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
     import os
-    # os.chdir(r"C:\Users\brook\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
-    os.chdir(r"C:\Users\melof\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
+    # os.chdir(r"C:\Users\melof\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
+    os.chdir(r"C:\Users\brook\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
+    
 
 #custom imports
 #other imports
 from copy import deepcopy as dpcpy
-import mne
+#import mne
 
 from matplotlib import pyplot as plt
 import scipy.signal as signal
@@ -41,7 +42,7 @@ with open(f'{pathSoi}{soi_file}', 'rb') as fp:
        soi = pckl.load(fp)
 
 #Reading desired channel labels
-ch1Labl, ch2Labl, ch3Labl = input("Enter 3 channel labels (ex: P7 P3 Pz):").split()
+ch1Labl, ch2Labl, ch3Labl = input("Enter 3 channel labels (ex: P7 P3 Pz):").upper().split()
 #
 #%% CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #%% CONFIGURATION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -93,13 +94,16 @@ def plotData(ch1, ch2, ch3):
 def applyFilters(ch1, ch2, ch3, sampleFreq):
     #Apply notch filter
     notch_freq = [60, 120, 180, 240]
-    notchedData = []
+    ch1Stream_notched = ch1['stream']
+    ch2Stream_notched = ch2['stream']
+    ch3Stream_notched = ch3['stream']
+    
     for freq in notch_freq:
-        b_notch, a_notch = signal.iirnotch(w0=freq / (sampleFreq/2), Q=50, fs=sampleFreq)
-        ch1Stream_notched = signal.filtfilt(b_notch, a_notch, ch1['stream'])
-        ch2Stream_notched = signal.filtfilt(b_notch, a_notch, ch2['stream'])
-        ch3Stream_notched = signal.filtfilt(b_notch, a_notch, ch3['stream'])
-        notchedData.append([ch1Stream_notched, ch2Stream_notched, ch3Stream_notched])
+        b_notch, a_notch = signal.iirnotch(w0=freq, Q=50, fs=sampleFreq)
+        ch1Stream_notched = signal.filtfilt(b_notch, a_notch, ch1Stream_notched)
+        ch2Stream_notched = signal.filtfilt(b_notch, a_notch, ch2Stream_notched)
+        ch3Stream_notched = signal.filtfilt(b_notch, a_notch, ch3Stream_notched)
+    notchedData = [ch1Stream_notched, ch2Stream_notched, ch3Stream_notched]
     
     #Apply impedance filter
     impedance = [124, 126]
@@ -132,11 +136,10 @@ def plotFilteredData(ch1, ch2, ch3, notchedData, impedanceData, bandpassData):
         plt.xlabel('Time (s)')
         plt.ylabel('Amplitude')
 
-        #Plotting filtered data
+        #Plotting notched data
         pltIndex += 1
         plt.subplot(3, 4, pltIndex)
-        for i, data in enumerate(notchedData[chIndex]):
-            plt.plot(channel['tStamp'], data, label = f'Notched {i+1}')
+        plt.plot(channel['tStamp'], notchedData[chIndex])
         plt.title(channel['label'][0] + ' with Notch Filter')
         plt.xlabel('Time (s)')
         plt.ylabel('Amplitude')
