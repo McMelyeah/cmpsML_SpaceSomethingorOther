@@ -15,8 +15,10 @@ Notes:
 #%% IMPORTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
     import os
+    base_path = r"C:\Users\brook\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE"
+    path = os.path.join(base_path, r"C:\Users\melof\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
     # os.chdir(r"C:\Users\brook\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
-    os.chdir(r"C:\Users\melof\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
+    # os.chdir(r"C:\Users\melof\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
 
 #custom imports
 #other imports
@@ -31,6 +33,7 @@ import seaborn as sns
 import pickle as pckl
 from scipy.stats import kurtosis, skew
 import time
+from sklearn.model_selection import KFold
 #
 #%% USER INTERFACE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 chLabel = input("Enter a channel label(ex, M1):").upper()
@@ -43,7 +46,8 @@ chLabel = input("Enter a channel label(ex, M1):").upper()
 #Class definitions Start Here
 #Function definitions Start Here
 def getIndex(chLabel):
-    pathSoIRoot = 'INPUT\\DataSmall\\sb1\\se1'
+    pathSoIRoot = os.path.join(path, 'INPUT','DataSmall','sb1','se1')
+    # pathSoIRoot = 'INPUT\\DataSmall\\sb1\\se1'
     pathSoi = f'{pathSoIRoot}\\'
     soi_file = '1_1_bk_pic.pckl'
     #Load SoI objectM1
@@ -126,14 +130,23 @@ def visualize(features, chLabel):
     plt.suptitle(chLabel + " Features\n", fontsize=18)
     for i, f1, f2 in zip(range(1,5), ['f0', 'f2', 'f4', 'f6'], ['f1', 'f3', 'f5', 'f7']):
         plt.subplot(2, 2, i)
-        plt.scatter(features[features['class'] == 0][f1], features[features['class'] == 0][f2], c='g', label='sb1(class 0)', alpha=0.75)
-        plt.scatter(features[features['class'] == 1][f1], features[features['class'] == 1][f2], c='b', label='sb2(class 1)', alpha=0.75)
+        unique_f1 = sorted(features[f1].unique())
+        plt.hist(features[features['class'] == 0][f1], bins=unique_f1, weights=features[features['class'] == 0][f2], color='g', label='sb1(class 0)', alpha=0.75)
+        plt.hist(features[features['class'] == 1][f1], bins=unique_f1, weights=features[features['class'] == 1][f2], color='b', label='sb2(class 1)', alpha=0.75)
         plt.title(f1 + ' vs ' + f2, fontsize=16, loc='left')
         plt.xlabel(f1, fontsize=15)
         plt.ylabel(f2, fontsize=15)
         plt.legend()
     plt.tight_layout()
     plt.show()
+    
+# def kfold(features, k=5):
+#     kf = KFold(n_splits=k)
+#     results = []
+#     for train_index, test_index in kf.split(features):
+#         trainVal, test = features.iloc[train_index], features.iloc[test_index]
+#     return results
+
 #
 #%% MAIN CODE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Main code start here
@@ -144,7 +157,8 @@ def main():
     streamID = 0
     for sb in ['sb1', 'sb2']:
         for se in ['se1', 'se2']:
-            pathSoIRoot = 'INPUT\\DataSmall\\' + sb + '\\' + se
+            pathSoIRoot = os.path.join(path, 'INPUT','DataSmall',sb,se)
+            # pathSoIRoot = 'INPUT\\DataSmall\\' + sb + '\\' + se
             files = os.listdir(pathSoIRoot)
             for file in files:
                 pathSoi = f'{pathSoIRoot}\\'
@@ -169,8 +183,18 @@ def main():
     trainVal = features.loc[features['se'] == 'se1']
     test = features.loc[features['se'] == 'se2']
     #Output csv files
-    trainVal.to_csv('OUTPUT\\TrainValidateData.csv')
-    test.to_csv('OUTPUT\\TestData.csv')
+    trainValfilepath = os.path.join(path, 'OUTPUT', 'TrainValidateData.csv')
+    testDatafilepath = os.path.join(path, 'OUTPUT', 'TestData.csv')
+    trainVal.to_csv(trainValfilepath)
+    test.to_csv(testDatafilepath)
+    
+    
+    # features = load_features()
+    # results = kfold(features)
+    # report_results(results)
+    
+    # trainVal.to_csv('OUTPUT\\TrainValidateData.csv')
+    # test.to_csv('OUTPUT\\TestData.csv')
 #             
 #%% SELF-RUN ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Main Self-run block
