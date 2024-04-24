@@ -1,5 +1,5 @@
 #%% MODULE BEGINS
-module_name = 'PA3'
+module_name = 'PA4'
 '''
 Version: <***>
 Description:
@@ -28,12 +28,15 @@ from matplotlib import pyplot as plt
 import scipy.signal as signal
 import numpy as np
 import mne
+import csv
 import pandas as pd
 import seaborn as sns
 import pickle as pckl
 from scipy.stats import kurtosis, skew
 import time
-from sklearn.model_selection import KFold
+from sklearn.model_selection import train_test_split
+from sklearn.neural_network import MLPClassifier
+from sklearn.metrics import accuracy_score
 #
 #%% USER INTERFACE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 chLabel = input("Enter a channel label(ex, M1):").upper()
@@ -140,13 +143,27 @@ def visualize(features, chLabel):
     plt.tight_layout()
     plt.show()
     
-# def kfold(features, k=5):
-#     kf = KFold(n_splits=k)
-#     results = []
-#     for train_index, test_index in kf.split(features):
-#         trainVal, test = features.iloc[train_index], features.iloc[test_index]
-#     return results
-
+def  three_tier_test(features):
+    train_val, test = train_test_split(features, test_size=0.2, random_state=None)
+    train, val = train_test_split(train_val, test_size=.25, random_state=None)
+    
+    X_train, Y_train = train.drop(columns=['class']), train['class']
+    X_val, Y_val = val.drop(columns=['class']), val['class']
+    X_test, Y_test = test.drop(columns=['class']), test['class']
+    
+    model = MLPClassifier(hidden_layer_sizes=100, activation='logistic',verbose=True).fit(X_train, Y_train)
+    
+    val_predictions = model.predict(X_val)
+    val_accuracy = accuracy_score(Y_val, val_predictions)
+    
+    test_predictions = model.predict(X_test)
+    test_accuracy = accuracy_score(Y_test, test_predictions)
+     
+    plt.plot(model.loss_curve_, label = 'Epoch-Error Training Loss')
+    
+    return {'validation accuracy': val_accuracy, 'test accuracy': test_accuracy}
+   
+    
 #
 #%% MAIN CODE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Main code start here
@@ -177,22 +194,22 @@ def main():
                 streamID += 1
     features.loc[features['sb'] == 'sb2', 'class'] = 1
     
+    #Trying out getting rid of sb se from columns
+    features = pd.get_dummies(features, columns=['sb','se'])
+    
     #Visualize features
     visualize(features, chLabel)
     #Split train/val and test data
-    trainVal = features.loc[features['se'] == 'se1']
-    test = features.loc[features['se'] == 'se2']
+    trainVal = features.loc[features['se_se1'] == 'se1']
+    test = features.loc[features['se_se2'] == 'se2']
     #Output csv files
     trainValfilepath = os.path.join(path, 'OUTPUT', 'TrainValidateData.csv')
     testDatafilepath = os.path.join(path, 'OUTPUT', 'TestData.csv')
     trainVal.to_csv(trainValfilepath)
     test.to_csv(testDatafilepath)
     
-    
-    # features = load_features()
-    # results = kfold(features)
-    # report_results(results)
-    
+    three_tier_test(features)
+
     # trainVal.to_csv('OUTPUT\\TrainValidateData.csv')
     # test.to_csv('OUTPUT\\TestData.csv')
 #             
