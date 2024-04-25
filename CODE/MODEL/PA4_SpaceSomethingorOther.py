@@ -15,10 +15,10 @@ Notes:
 #%% IMPORTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
     import os
-    base_path = r"C:\Users\brook\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE"
-    path = os.path.join(base_path, r"C:\Users\melof\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
+    # base_path = r"C:\Users\brook\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE"
+    # path = os.path.join(base_path, r"C:\Users\melof\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
     # os.chdir(r"C:\Users\brook\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
-    # os.chdir(r"C:\Users\melof\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
+    os.chdir(r"C:\Users\melof\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
 
 #custom imports
 #other imports
@@ -48,8 +48,8 @@ chLabel = input("Enter a channel label(ex, M1):").upper()
 #Class definitions Start Here
 #Function definitions Start Here
 def getIndex(chLabel):
-    pathSoIRoot = os.path.join(path, 'INPUT','DataSmall','sb1','se1')
-    # pathSoIRoot = 'INPUT\\DataSmall\\sb1\\se1'
+    #pathSoIRoot = os.path.join(path, 'INPUT','DataSmall','sb1','se1')
+    pathSoIRoot = 'INPUT\\DataSmall\\sb1\\se1'
     pathSoi = f'{pathSoIRoot}\\'
     soi_file = '1_1_bk_pic.pckl'
     #Load SoI objectM1
@@ -195,8 +195,8 @@ def main():
     streamID = 0
     for sb in ['sb1', 'sb2']:
         for se in ['se1', 'se2']:
-            pathSoIRoot = os.path.join(path, 'INPUT','DataSmall',sb,se)
-            # pathSoIRoot = 'INPUT\\DataSmall\\' + sb + '\\' + se
+            
+            pathSoIRoot = 'INPUT\\DataSmall\\' + sb + '\\' + se
             files = os.listdir(pathSoIRoot)
             for file in files:
                 pathSoi = f'{pathSoIRoot}\\'
@@ -216,18 +216,21 @@ def main():
     features.loc[features['sb'] == 'sb2', 'class'] = 1
     
     #Trying out getting rid of sb se from columns
-    features = pd.get_dummies(features, columns=['sb','se'])
+    features = features.drop(columns=['sb','se'])
     
     #Visualize features
     visualize(features, chLabel)
     #Split train/val and test data
-    trainVal = features.loc[features['se_se1'] == 'se1']
-    test = features.loc[features['se_se2'] == 'se2']
-    #Output csv files
-    trainValfilepath = os.path.join(path, 'OUTPUT', 'TrainValidateData.csv')
-    testDatafilepath = os.path.join(path, 'OUTPUT', 'TestData.csv')
-    trainVal.to_csv(trainValfilepath)
-    test.to_csv(testDatafilepath)
+    # trainVal = features.loc[features['se'] == 'se1']
+    # test = features.loc[features['se2'] == 'se2']
+    #Split train/val and test data based on available columns
+    trainVal = features.loc[features['streamID'] < (features['streamID'].max() / 2)]
+    test = features.loc[features['streamID'] >= (features['streamID'].max() / 2)]
+
+    
+    #Make csv
+    trainVal.to_csv('OUTPUT\\TrainValidateData.csv')
+    test.to_csv('OUTPUT\\TestData.csv')
     
     #Apply model and 3-tier testing scheme
     modelResults = three_tier_test(features, chLabel)
