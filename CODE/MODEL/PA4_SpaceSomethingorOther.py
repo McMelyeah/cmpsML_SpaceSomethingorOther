@@ -15,8 +15,6 @@ Notes:
 #%% IMPORTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
     import os
-    # base_path = r"C:\Users\brook\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE"
-    # path = os.path.join(base_path, r"C:\Users\melof\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
     # os.chdir(r"C:\Users\brook\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
     os.chdir(r"C:\Users\melof\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
 
@@ -48,7 +46,6 @@ chLabel = input("Enter a channel label(ex, M1):").upper()
 #Class definitions Start Here
 #Function definitions Start Here
 def getIndex(chLabel):
-    #pathSoIRoot = os.path.join(path, 'INPUT','DataSmall','sb1','se1')
     pathSoIRoot = 'INPUT\\DataSmall\\sb1\\se1'
     pathSoi = f'{pathSoIRoot}\\'
     soi_file = '1_1_bk_pic.pckl'
@@ -150,7 +147,7 @@ def three_tier_test(features, chLabel):
     X_val, Y_val = val.drop(columns=['class']), val['class'].astype('int')
     X_test, Y_test = test.drop(columns=['class']), test['class'].astype('int')
     
-    model = MLPClassifier(hidden_layer_sizes=100, max_iter=500, activation='logistic').fit(X_train, Y_train)
+    model = MLPClassifier(batch_size=5, max_iter=1000, activation='logistic').fit(X_train, Y_train)
     plt.plot(model.loss_curve_, label='Training', c='b', alpha=0.75)
     model.fit(X_val, Y_val)
     plt.plot(model.loss_curve_, label='Validation', c='g', alpha=0.75)
