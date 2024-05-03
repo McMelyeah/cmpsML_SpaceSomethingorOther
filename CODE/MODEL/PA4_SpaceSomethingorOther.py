@@ -15,8 +15,8 @@ Notes:
 #%% IMPORTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
     import os
-    # os.chdir(r"C:\Users\brook\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
-    os.chdir(r"C:\Users\melof\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
+    os.chdir(r"C:\Users\brook\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
+    # os.chdir(r"C:\Users\melof\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
 
 #custom imports
 #other imports
@@ -124,27 +124,30 @@ def getFeatures(stream, streamID, sb, se, window_size=100, overlap=0.25):
     newFeatures = pd.DataFrame(newFeatures)
     return newFeatures
     
-def visualize(features, chLabel):
-    plt.figure(figsize=(12,12))
-    plt.suptitle(chLabel + " Features\n", fontsize=18)
-    for i, f1, f2 in zip(range(1,5), ['f0', 'f2', 'f4', 'f6'], ['f1', 'f3', 'f5', 'f7']):
-        plt.subplot(2, 2, i)
-        unique_f1 = sorted(features[f1].unique())
-        plt.hist(features[features['class'] == 0][f1], bins=unique_f1, weights=features[features['class'] == 0][f2], color='g', label='sb1(class 0)', alpha=0.75)
-        plt.hist(features[features['class'] == 1][f1], bins=unique_f1, weights=features[features['class'] == 1][f2], color='b', label='sb2(class 1)', alpha=0.75)
-        plt.title(f1 + ' vs ' + f2, fontsize=16, loc='left')
-        plt.xlabel(f1, fontsize=15)
-        plt.ylabel(f2, fontsize=15)
-        plt.legend()
-    plt.tight_layout()
-    plt.show()
+# def visualize(features, chLabel):
+#     plt.figure(figsize=(12,12))
+#     plt.suptitle(chLabel + " Features\n", fontsize=18)
+#     for i, f1, f2 in zip(range(1,5), ['f0', 'f2', 'f4', 'f6'], ['f1', 'f3', 'f5', 'f7']):
+#         plt.subplot(2, 2, i)
+#         unique_f1 = sorted(features[f1].unique())
+#         plt.hist(features[features['class'] == 0][f1], bins=unique_f1, weights=features[features['class'] == 0][f2], color='g', label='sb1(class 0)', alpha=0.75)
+#         plt.hist(features[features['class'] == 1][f1], bins=unique_f1, weights=features[features['class'] == 1][f2], color='b', label='sb2(class 1)', alpha=0.75)
+#         plt.title(f1 + ' vs ' + f2, fontsize=16, loc='left')
+#         plt.xlabel(f1, fontsize=15)
+#         plt.ylabel(f2, fontsize=15)
+#         plt.legend()
+#     plt.tight_layout()
+#     plt.show()
     
 def three_tier_test(features, chLabel):
+
+
+    
     train_val, test = train_test_split(features, test_size=0.2, random_state=None)
     train, val = train_test_split(train_val, test_size=.25, random_state=None)
     
-    X_train, Y_train = train.drop(columns=['class']), train['class'].astype('int')
-    X_val, Y_val = val.drop(columns=['class']), val['class'].astype('int')
+    X_train, Y_train = train.drop(columns=['sb','se','streamID','class']), train['class'].astype('int')
+    X_val, Y_val = val.drop(columns=['sb','se','streamID','class']), val['class'].astype('int')
     X_test, Y_test = test.drop(columns=['class']), test['class'].astype('int')
     
     model = MLPClassifier(batch_size=5, max_iter=1000, activation='logistic').fit(X_train, Y_train)
@@ -159,7 +162,12 @@ def three_tier_test(features, chLabel):
     val_predictions = model.predict(X_val)
     test_predictions = model.predict(X_test)
     
-    return {'ValTruth': Y_val, 'ValPrediction': val_predictions, 'TestTruth': Y_test, 'TestPrediction': test_predictions} 
+    
+    modelResults =  {'ValTruth': Y_val, 'ValPrediction': val_predictions, 'TestTruth': Y_test, 'TestPrediction': test_predictions} 
+    
+    plotPerformance(modelResults, chLabel)
+    
+    return model
 
 def plotPerformance(modelResults, chLabel):
     #Calculating and plotting performance measures for val and test data
@@ -187,9 +195,11 @@ def plotPerformance(modelResults, chLabel):
 #Main code start here
 def main():
     features = pd.DataFrame(columns=['sb', 'se', 'streamID', 'f0', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'class'])
+    train_val = pd.DataFrame(columns=['sb', 'se', 'streamID', 'f0', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'class'])
+    tester = pd.DataFrame(columns=['sb', 'se', 'streamID', 'f0', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'class'])
     chIndex = getIndex(chLabel)
+    streamID = 0    
     
-    streamID = 0
     for sb in ['sb1', 'sb2']:
         for se in ['se1', 'se2']:
             
@@ -212,27 +222,62 @@ def main():
                 streamID += 1
     features.loc[features['sb'] == 'sb2', 'class'] = 1
     
-    #Trying out getting rid of sb se from columns
-    features = features.drop(columns=['sb','se'])
-    
-    #Visualize features
-    visualize(features, chLabel)
-    #Split train/val and test data
-    # trainVal = features.loc[features['se'] == 'se1']
-    # test = features.loc[features['se2'] == 'se2']
-    #Split train/val and test data based on available columns
-    trainVal = features.loc[features['streamID'] < (features['streamID'].max() / 2)]
-    test = features.loc[features['streamID'] >= (features['streamID'].max() / 2)]
+    input_path = 'OUTPUT\\TrainValidateData.csv'
+    test_path = 'OUTPUT\\TestData.csv'
+    train_val_data = pd.read_csv(input_path) 
+    test_data = pd.read_csv(test_path)
+    # with open(train_val_data, 'rb') as train_val_file:
+    #     for sb in train_val_data:
+    #             for se in ['se1']:
+    #                     #Load SoI object
+    #                     # with open(f'{pathSoi}{soi_file}', 'rb') as fp:
+    #                     #     soi = pckl.load(fp)
+                        
+    #                     #Apply filters
+    #                     filteredStream = applyFilters(soi['series'][chIndex], soi['info']['eeg_info']['effective_srate'])
+    #                     #Get features
+    #                     newFeatures = getFeatures(filteredStream, streamID, sb, se)
+    #                     #Add features to DF
+    #                     if se == 'se1':
+    #                         trainVal = pd.concat([trainVal, newFeatures], ignore_index=True)
+    #                     # elif se == 'se2':
+    #                     #     tester = pd.concat([tester, newFeatures], ignore_index=True)
+                            
+    #                     # features = pd.concat([features, newFeatures], ignore_index=True)
+                        
+    #                     streamID += 1
+    # # tester.loc[tester['sb'] == 'sb2', 'class'] = 1
+
 
     
+    test_X = test_data.iloc[:, 3:-1]
+    test_Y = test_data.iloc[:,-1]
+    
+    #Trying out getting rid of sb se from columns
+    # features = features.drop(columns=['sb','se'])
+    
+    #Visualize features
+    #visualize(features, chLabel)
+    #Split train/val and test data
+    trainVal = features.loc[features['se'] == 'se1']
+    test = features.loc[features['se'] == 'se2']
+    #Split train/val and test data based on available columns
+    # trainVal = features.loc[features['streamID'] < (features['streamID'].max() / 2)]
+    # test = features.loc[features['streamID'] >= (features['streamID'].max() / 2)]
+
     #Make csv
     trainVal.to_csv('OUTPUT\\TrainValidateData.csv')
     test.to_csv('OUTPUT\\TestData.csv')
     
     #Apply model and 3-tier testing scheme
-    modelResults = three_tier_test(features, chLabel)
+    model = three_tier_test(trainVal, chLabel)
+    
+    # thing = model.predict(test_X)
+    # modelStats = accuracy_score(test_Y, thing)
+    # print(modelStats)
+    
     #Get performance measures from model
-    plotPerformance(modelResults, chLabel)
+    plotPerformance(model, chLabel)
 #             
 #%% SELF-RUN ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Main Self-run block
