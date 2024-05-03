@@ -30,8 +30,9 @@ import pandas as pd
 import seaborn as sns
 import pickle as pckl
 from scipy.stats import kurtosis, skew
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.neighbors import KNeighborsClassifier 
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import confusion_matrix, roc_auc_score, accuracy_score, precision_score, recall_score, f1_score
 #
@@ -183,8 +184,77 @@ def knn(trainVal, test):
 
     return knnPerformance, contingency_table
 
+def dtree(trainVal, test):
+    best_accuracy = 0
+    
+    #Using k-fold cross validation k=5
+    for k_fold in range(1,6):
+        #Shuffle data
+        trainVal.sample(frac=1)
+        #Split data
+        train, val = train_test_split(trainVal, test_size=.25, random_state=None)
+        
+        #Fit model with training data
+        model = DecisionTreeClassifier(criterion='entropy')
+        model.fit(train.drop(columns='class'), train['class'])
+        
+        #Test model against validation data
+        val_predictions = model.predict(val.drop(columns='class'))
+
+        #Get accuracy of model
+        accuracy = accuracy_score(val['class'], val_predictions)
+
+        #Comparing accuracies to find the best model
+        if(accuracy > best_accuracy):
+            best_accuracy = accuracy
+            best_model = model
+
+    #Run best model against test data
+    test_predictions = best_model.predict(test.drop(columns='class'))
+
+    #Get results from test data
+    precision =   precision_score(test['class'], test_predictions)
+    recall =      recall_score(test['class'], test_predictions)
+    f1 =          f1_score(test['class'], test_predictions)
+    accuracy =    accuracy_score(test['class'], test_predictions)
+    specificity = recall_score(test['class'], test_predictions, pos_label=0)
+    auc =         roc_auc_score(test['class'], test_predictions)
+    contingency_table = confusion_matrix(test['class'], test_predictions)
+    dTreePerformance = {'Precision': precision, 'Recall': recall, 'F1': f1, 'Accuracy': accuracy, 'Specificity': specificity, 'AUC': auc}
+
+    return dTreePerformance, contingency_table
+
+def ann(trainVal, test):
+    #Split train/val data
+    train, val = train_test_split(trainVal, test_size=.25, random_state=None)
+    
+    #Fit model and generate epoch curves
+    model = MLPClassifier(batch_size=5, max_iter=1000, activation='logistic')
+    model.fit(train.drop(columns='class'), train['class'])
+    plt.plot(model.loss_curve_, label='Training', c='b', alpha=0.75)
+    model.fit(val.drop(columns='class'), val['class'])
+    plt.plot(model.loss_curve_, label='Validation', c='g', alpha=0.75)
+    plt.title('Epoch Error Curve')
+    plt.xlabel('Epoch')
+    plt.ylabel("Error")
+    plt.legend()
+
+    #Run model against test data
+    test_predictions = model.predict(test.drop(columns='class'))
+      
+    #Get results from test data
+    precision =   precision_score(test['class'], test_predictions)
+    recall =      recall_score(test['class'], test_predictions)
+    f1 =          f1_score(test['class'], test_predictions)
+    accuracy =    accuracy_score(test['class'], test_predictions)
+    specificity = recall_score(test['class'], test_predictions, pos_label=0)
+    auc =         roc_auc_score(test['class'], test_predictions)
+    contingency_table = confusion_matrix(test['class'], test_predictions)
+    annPerformance = {'Precision': precision, 'Recall': recall, 'F1': f1, 'Accuracy': accuracy, 'Specificity': specificity, 'AUC': auc}
+
+    return annPerformance, contingency_table
+
 def plotPerformance(modelPerformance, modelName, chLabel):
-    #Calculating and plotting performance measures for val and test data
     plt.figure(figsize=(10,8))
     plt.title(chLabel + ': ' + modelName + ' Performance Measures', fontsize=16)
     plt.bar(modelPerformance.keys(), modelPerformance.values())
@@ -240,8 +310,18 @@ def main():
 
     #Running KNN model
     knn_performance, knn_cMatrix = knn(trainVal_data, test_data)
-    print(knn_cMatrix)
     plotPerformance(knn_performance, 'KNN', chLabel)
+    print(chLabel, ':', 'KNN Confusion Matrix\n', knn_cMatrix)
+
+    #Running DTree model
+    dtree_performance, dtree_cMatrix = dtree(trainVal_data, test_data)
+    plotPerformance(dtree_performance, 'DTree', chLabel)
+    print(chLabel, ':', 'DTree Confusion Matrix\n', dtree_cMatrix)
+
+    #Running ANN model
+    ann_performance, ann_cMatrix = ann(trainVal_data, test_data)
+    plotPerformance(ann_performance, 'ANN', chLabel)
+    print(chLabel, ':', 'ANN Confusion Matrix\n', ann_cMatrix)
     
 #             
 #%% SELF-RUN ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
