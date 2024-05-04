@@ -298,12 +298,12 @@ def main():
     trainVal = features.loc[features['se'] == 'se1']
     test = features.loc[features['se'] == 'se2']
     #Output CSV files to input folder to be used in models
-    trainVal.to_csv('INPUT\\TrainValidateData.csv',index=False)
-    test.to_csv('INPUT\\TestData.csv',index=False)
+    trainVal.to_csv('INPUT\\'+chLabel+'TrainValidateData.csv',index=False)
+    test.to_csv('INPUT\\'+chLabel+'TestData.csv',index=False)
 
     #Reading features from input CSV files
-    trainVal_path = 'INPUT\\TrainValidateData.csv'
-    test_path = 'INPUT\\TestData.csv'
+    trainVal_path = 'INPUT\\'+chLabel+'TrainValidateData.csv'
+    test_path = 'INPUT\\'+chLabel+'TestData.csv'
     trainVal_data = pd.read_csv(trainVal_path) 
     test_data = pd.read_csv(test_path)
 
