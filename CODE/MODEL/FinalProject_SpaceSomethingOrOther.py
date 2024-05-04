@@ -15,8 +15,8 @@ Notes:
 #%% IMPORTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
     import os
-    os.chdir(r"C:\Users\brook\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
-    # os.chdir(r"C:\Users\melof\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
+    # os.chdir(r"C:\Users\brook\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
+    os.chdir(r"C:\Users\melof\OneDrive\Documents\GitHub\cmpsML_SpaceSomethingorOther\CODE")
 
 #custom imports
 #other imports
@@ -34,7 +34,9 @@ from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.neighbors import KNeighborsClassifier 
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neural_network import MLPClassifier
-from sklearn.metrics import confusion_matrix, roc_auc_score, accuracy_score, precision_score, recall_score, f1_score
+from sklearn.inspection import DecisionBoundaryDisplay
+from sklearn.svm import SVC
+from sklearn.metrics import confusion_matrix, roc_auc_score, accuracy_score, precision_score, recall_score, f1_score, classification_report
 #
 #%% USER INTERFACE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 chLabel = input("Enter a channel label(ex, M1):").upper()
@@ -254,6 +256,7 @@ def ann(trainVal, test):
 
     return annPerformance, contingency_table
 
+
 def plotPerformance(modelPerformance, modelName, chLabel):
     plt.figure(figsize=(10,8))
     plt.title(chLabel + ': ' + modelName + ' Performance Measures', fontsize=16)
@@ -323,6 +326,28 @@ def main():
     plotPerformance(ann_performance, 'ANN', chLabel)
     print(chLabel, ':', 'ANN Confusion Matrix\n', ann_cMatrix)
     
+    #Running SVM
+    
+    # Splitting into data and labels
+    X_trainVal = trainVal_data.iloc[:, :-1]  # Selecting all rows, and all columns except the last one
+    y_trainVal = trainVal_data.iloc[:, -1]   # Selecting all rows, and the last column
+
+    # Splitting trainVal_data into train and validation sets
+    X_train, X_val, y_train, y_val = train_test_split(X_trainVal, y_trainVal, test_size=0.2, random_state=42)
+
+    # Initialize and train the SVM model
+    svm_model = SVC()
+    svm_model.fit(X_train, y_train)
+
+    # Predict on the validation set
+    y_pred_val = svm_model.predict(X_val)
+
+    # Calculate accuracy on the validation set
+    val_accuracy = accuracy_score(y_val, y_pred_val)
+    print("Validation Accuracy:", val_accuracy)
+    val_f1 = f1_score(y_val, y_pred_val)
+    print("F1 Score: ", val_f1)
+
 #             
 #%% SELF-RUN ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Main Self-run block
